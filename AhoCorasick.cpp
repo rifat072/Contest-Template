@@ -1,3 +1,4 @@
+//http://www.lightoj.com/volume_showproblem.php?problem=1427
 #include<bits/stdc++.h>
 using namespace std;
 typedef long long ll;
