@@ -1,226 +1,238 @@
-///https://www.spoj.com/problems/QTREE/
 #include<bits/stdc++.h>
-#define mx 10004
 using namespace std;
-typedef long long ll;
-const int inf=1000000000;
-const int M=10000003;
+const int maxn = 50000+50;
 
-int n,ptr,chainno;
-vector<int> adj[mx];
-vector<int> cost[mx];
-int par[mx];
-int chainid[mx];
-int chainhead[mx];
-int base[mx];
-int posbase[mx];
-int level[mx];
-int sparse[mx][15];
-int tree[6*mx];
-int subsize[mx];
-pair<int,int> p[mx];
-
-inline void aintclear(){
-for(int i=0;i<=mx;i++){
-    adj[i].clear();
-    cost[i].clear();
-    par[i]=-1;
-    chainid[i]=-1;
-    chainhead[i]=-1;
-    base[i]=0;
-    level[i]=0;
-    posbase[i]=-1;
-    subsize[i]=0;
-    posbase[i]=-1;
-}
-memset(sparse,-1,sizeof(sparse));
-ptr=1;
-chainno=1;
-}
-inline int left(int nd){return nd<<1;}
-inline int right(int nd){return (nd<<1)|1;}
-inline int mid(int b,int e){return (b+e)>>1;}
-
-
-void dfs(int u,int depth)
-{
-sparse[u][0]=par[u];
-level[u]=depth;
-subsize[u]=1;
-for(int i=0;i<adj[u].size();i++){
-    int v=adj[u][i];
-    if(v!=par[u]){
-        par[v]=u;
-        dfs(v,depth+1);
-        subsize[u]+=subsize[v];
+int n, ptr, chainno;
+vector < int >  adj[maxn];
+int level[maxn];
+int sparse[maxn][20];
+int subsize[maxn];
+int chainid[maxn];
+int chainhead[maxn];
+int base[maxn];
+int posbase[maxn];
+int tree[maxn*6];
+int lazy[maxn*6];
+void clean(){
+    for(int i = 0; i < maxn; i++){
+        adj[i].clear();
+        chainid[i] = -1;
+        chainhead[i] = -1;
+        base[i] = 0;
+        level[i] = -1;
+        posbase[i] = -1;
+        subsize[i] = 0;
     }
-}
-}
-
-inline void lca_init(){
-for(int j=1;(1<<j)<=n;j++){
-    for(int i=1;i<=n;i++){
-        if(sparse[i][j-1]!=-1)sparse[i][j]=sparse[sparse[i][j-1]][j-1];
-    }
-}
+    memset(sparse, -1, sizeof sparse);
+    memset(tree, 0, sizeof tree);
+    ptr = 1;
+    chainno = 1;
 }
 
-void hld(int cur,int cst){
-if(chainhead[chainno]==-1) chainhead[chainno]=cur;
 
-chainid[cur]=chainno;
-posbase[cur]=ptr;
-base[ptr]=cst;
-ptr++;
 
-int m=-inf;
-int sc=-1;
-for(int i =0;i<adj[cur].size();i++){
-    int v=adj[cur][i];
-    if(v!=par[cur] and (sc==-1 or subsize[sc]<subsize[v])){
-        sc=v;
-        m=cost[cur][i];
+void dfs(int u, int p, int depth){
+    sparse[u][0] = p;
+    level[u] = depth;
+    subsize[u] = 1;
+    for(int i = 0; i < adj[u].size(); i++){
+        int v= adj[u][i];
+        if(v == p) continue;
+        dfs(v, u, depth+1);
+        subsize[u] += subsize[v];
     }
 }
 
-if(sc!=-1){
-    hld(sc,m);
+void lca_init(){
+    for(int j = 1; (1<<j) < n; j++){
+        //cout<<j<<endl;
+        for(int i = 0; i < n; i++){
+            if(sparse[i][j-1] !=-1) sparse[i][j] = sparse[sparse[i][j-1]][j-1];
+        }
+    }
 }
 
-for(int i=0;i<adj[cur].size();i++){
-    int v=adj[cur][i];
-    if(v!=sc and v!=par[cur]){
+
+int query_lca(int p, int q){
+    if(level[p] < level[q])swap(p,q);
+    int log=0;
+    while((1<<log) <= level[p])log++;
+    log--;
+    for(int i = log; i >= 0; i--){
+        if(level[p] - (1<<i) >= level[q]){
+            p = sparse[p][i];
+        }
+    }
+    if(p == q) return p;
+    for(int i = log; i >= 0; i--){
+        if(sparse[p][i] != -1 and sparse[p][i] != sparse[q][i]){
+            p = sparse[p][i];
+            q = sparse[q][i];
+        }
+    }
+    return sparse[p][0];
+}
+
+
+void hld(int cur,int p, int cst){
+    if(chainhead[chainno] == -1) chainhead[chainno] = cur;
+    chainid[cur] = chainno;
+    posbase[cur] = ptr;
+    base[ptr] = cst;
+    ptr++;
+
+    int sc = -1;
+    int mx = -10000000000;
+
+    for(int i = 0; i < (int) adj[cur].size(); i++){
+        int v = adj[cur][i];
+        if(v == p) continue;
+        if(sc == -1 or subsize[sc] < subsize[v]){
+            sc = v;
+            mx = 0;/// here goes cost,for this problem it is 0.
+        }
+    }
+
+    if(sc != -1) hld(sc, cur, mx);
+
+    for(int i = 0; i < (int) adj[cur].size(); i++){
+        int v = adj[cur][i];
+        if(v == p or v == sc) continue;
         chainno++;
-        hld(v,cost[cur][i]);
+        int cst = 0; /// same
+        hld(v, cur, cst);
     }
-}
 
 }
+
 
 void build(int nd,int b,int e){
-if(b==e){
-    tree[nd]=base[b];
-    return;
-}
-build(left(nd),b,mid(b,e));
-build(right(nd),mid(b,e)+1,e);
-tree[nd]=tree[left(nd)]>tree[right(nd)]?tree[left(nd)]:tree[right(nd)];
-}
-
-int query_tree(int nd,int b,int e,int i,int j){
-if(b>e) return -inf ;
-if(i>e or j<b) return -inf;
-if(i<=b and j>=e) return tree[nd];
-ll ret1=query_tree(left(nd),b,mid(b,e),i,j);
-ll ret2=query_tree(right(nd),mid(b,e)+1,e,i,j);
-return ret1>ret2? ret1: ret2;
-}
-void update_tree(int nd,int b,int e,int i,int v){
-if(b>e) return;
-if(i>e or i<b) return;
-if(b==e and b==i){
-    tree[nd]=v;
-    return;
-}
-update_tree(left(nd),b,mid(b,e),i,v);
-update_tree(right(nd),mid(b,e)+1,e,i,v);
-tree[nd]=tree[left(nd)]>tree[right(nd)]?tree[left(nd)]:tree[right(nd)];
-}
-
-inline int query_lca(int p,int q){
-if(level[p]<level[q])swap(p,q);
-int log=0;
-while((1<<log)<=level[p])log++;
-log--;
-for(int i=log;i>=0;i--){
-    if(level[p]-(1<<i)>=level[q]){
-        p=sparse[p][i];
+    if(b==e){
+        tree[nd] = base[b];
+        lazy[nd] = 0;
+        return;
     }
+    int lnd = nd * 2;
+    int rnd = lnd + 1;
+    int mid = (b + e) / 2;
+    build(lnd, b, mid);
+    build(nd, mid + 1, e);
+    tree[nd] = 0;
+    lazy[nd] = 0;
 }
-if(p==q) return p;
-for(int i=log;i>=0;i--){
-    if(sparse[p][i]!=-1 and sparse[p][i]!=sparse[q][i]){
-        p=sparse[p][i];
-        q=sparse[q][i];
+inline void push_down(int nd, int b, int e){
+    tree[nd] += (e - b + 1) * lazy[nd];
+    if(b != e){
+        lazy[nd*2] += lazy[nd];
+        lazy[nd*2 + 1] += lazy[nd];
     }
-}
-return par[p];
+    lazy[nd] = 0;
 }
 
-inline int query_up(int u,int v){
-if(v==u) return 0;
-int vchain=chainid[v];
-int uchain;
-int ret=-inf;
-while(1){
-    uchain=chainid[u];
-    if(uchain==vchain){
-        if(v==u) break;
-        ll ret1= query_tree(1,1,ptr,posbase[v]+1,posbase[u]);
-        ret=ret>ret1 ? ret:ret1;
-        break;
-    }
-    ll ret2=query_tree(1,1,ptr,posbase[chainhead[uchain]],posbase[u]);
-    ret=ret>ret2? ret:ret2;
-    u=chainhead[uchain];
-    u=par[u];
-}
-return ret;
+int query_tree(int nd, int b, int e, int i, int j){
+    if(lazy[nd] != 0) push_down(nd, b, e);
+    if(i > e or j < b) return 0;
+    if(i <= b and j >= e) return tree[nd];
+    int lnd = nd * 2;
+    int rnd = lnd + 1;
+    int mid = (b + e) / 2;
+    int ret1 = query_tree(lnd, b, mid, i, j);
+    int ret2=query_tree(rnd, mid + 1, e, i, j);
+    return ret1 + ret2;
 }
 
-inline int query(int u,int v){
-int lca=query_lca(u,v);
-ll ret1=query_up(u,lca);
-ll ret2=query_up(v,lca);
-return ret1>ret2? ret1:ret2;
-}
-inline void change(int i,int c){
-int in;
-int u=p[i].first;
-int v=p[i].second;
-if(par[v]==u)in=v;
-else in=u;
-update_tree(1,1,ptr,posbase[in],c);
-}
-int main()
-{
-//freopen("input.txt","r",stdin);
-int t;
-
-scanf("%d",&t);
-while(t--){
-    aintclear();
-    scanf("%d",&n);
-    for(int i=0;i<n-1;i++){
-        int u,v,c;
-        scanf("%d%d%d",&u,&v,&c);
-        adj[u].push_back(v);
-        cost[u].push_back(c);
-        adj[v].push_back(u);
-        cost[v].push_back(c);
-        p[i+1]=make_pair(u,v);
-    }
-    dfs(1,1);
-    lca_init();
-    hld(1,-1);
-    build(1,1,ptr);
-    char str[100];
-    while(scanf("%s",str)){
-        if(str[0]=='D') break;
-        else if(str[0]=='Q'){
-            int u,v;
-            scanf("%d%d",&u,&v);
-            printf("%d\n",query(u,v));
+int query_up(int u, int v){
+    int vchain = chainid[v];
+    int uchain;
+    int ret = 0;
+    while(1){
+        uchain = chainid[u];
+        if(uchain == vchain){
+            int ret1 = query_tree(1, 1, ptr, posbase[v], posbase[u]);
+            ret += ret1;
+            break;
         }
-        else{
-            int i,c;
-            scanf("%d%d",&i,&c);
-            change(i,c);
-        }
+        int ret2=query_tree(1, 1, ptr, posbase[chainhead[uchain]], posbase[u]);
+        ret += ret2;
+        u=chainhead[uchain];
+        u=sparse[u][0];
     }
-    //printf("\n");
+    return ret;
+}
+int query(int u,int v){
+    int lca = query_lca(u,v);
+    int ret1 = query_up(u,lca);
+    int ret2 = query_up(v,lca);
+    int ret3 = query_up(lca,lca);
+    return ret1 + ret2 - ret3;
 }
 
-return 0;
+
+void update_tree(int nd, int b, int e, int i, int j, int c){
+    if(lazy[nd] != 0) push_down(nd, b, e);
+    if(i > e or j < b) return;
+    if(i <= b and j >= e){
+        lazy[nd] +=c;
+        push_down(nd, b, e);
+        return ;
+    }
+    int lnd = nd * 2;
+    int rnd = lnd + 1;
+    int mid = (b + e) / 2;
+    update_tree(lnd, b, mid, i, j, c);
+    update_tree(rnd, mid + 1, e, i, j, c);
+}
+
+void update_up(int u, int v, int c){
+    int vchain = chainid[v];
+    int uchain;
+    while(1){
+        uchain = chainid[u];
+        if(uchain == vchain){
+            update_tree(1, 1, ptr, posbase[v], posbase[u], c);
+            break;
+        }
+        update_tree(1, 1, ptr, posbase[chainhead[uchain]], posbase[u], c);
+        u=chainhead[uchain];
+        u=sparse[u][0];
+    }
+}
+void update(int u, int v, int c){
+    int lca = query_lca(u, v);
+    //cout<<u<<' '<<v<<' '<<lca<<endl;
+    update_up(v, lca, c);
+    update_up(u, lca, c);
+    update_up(lca, lca, -c);
+}
+
+int main(){
+    freopen("input.txt","r",stdin);
+
+    int t, u, v, c;
+    scanf("%d", &t);
+    for(int ts = 1; ts <= t; ts++){
+        clean();
+        scanf("%d", &n);
+        for(int i = 0; i < n-1; i++){
+            scanf("%d %d", &u, &v);
+            adj[u].push_back(v);
+            adj[v].push_back(u);
+        }
+
+        dfs(0,-1,1);
+        lca_init();
+        hld(0,-1,0);
+        build(1, 1, ptr);/// this problem won't needed.
+        int q;
+        scanf("%d", &q);
+        while(q--){
+            scanf("%d %d %d", &u, &v, &c);
+            update(u, v, c);
+        }
+        printf("Case #%d:\n",ts);
+        for(int i = 0; i < n; i++){
+            printf("%d\n",query(i,i));
+        }
+    }
 }
 
